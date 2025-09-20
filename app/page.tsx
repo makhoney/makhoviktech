@@ -1,103 +1,181 @@
+"use client";
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { projects } from "../lib/projects";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  // ---------- ЛОГИКА КАРУСЕЛИ ----------
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const [active, setActive] = useState(0);
+  const cardWidth = 960;
+  const gap = 32;
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const drag = useRef({ active: false, startX: 0, moved: false });
+
+function onPointerDown(e: React.PointerEvent) {
+  drag.current = { active: true, startX: e.clientX, moved: false };
+  (e.currentTarget as HTMLElement).classList.add("cursor-grabbing");
+}
+
+function onPointerMove(e: React.PointerEvent) {
+  if (!drag.current.active || !railRef.current) return;
+  const dx = e.clientX - drag.current.startX;
+  if (Math.abs(dx) > 2) {
+    drag.current.moved = true;
+    railRef.current.scrollLeft -= dx;
+    drag.current.startX = e.clientX;
+  }
+}
+
+function onPointerUp(e: React.PointerEvent) {
+  drag.current.active = false; // ← исправлено
+  (railRef.current as HTMLElement | null)?.classList.remove("cursor-grabbing");
+}
+
+function handleAnchorClick(e: React.MouseEvent) {
+  if (drag.current.moved) {
+    e.preventDefault(); // ← отменяем клик, если реально тащили
+    drag.current.moved = false; // сброс
+  }
+}
+
+
+  function onScroll() {
+    const rail = railRef.current; if (!rail) return;
+    const w = (rail.firstElementChild as HTMLElement | null)?.clientWidth ?? cardWidth;
+    const idx = Math.round(rail.scrollLeft / (w + gap));
+    setActive(Math.max(0, Math.min(idx, projects.length-1)));
+  }
+  function scrollToIndex(i: number) {
+    const rail = railRef.current; if (!rail) return;
+    const card = rail.querySelector<HTMLElement>("[data-card]");
+    const w = card?.clientWidth ?? cardWidth;
+    rail.scrollTo({ left: i * (w + gap), behavior: "smooth" });
+  }
+  function prev() { scrollToIndex(Math.max(0, active - 1)); }
+  function next() { scrollToIndex(Math.min(projects.length - 1, active + 1)); }
+
+  useEffect(() => {
+    function key(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    }
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [active]);
+
+  return (
+    <main className="min-h-screen">
+
+      {/* ОБО МНЕ */}
+      <section className="mx-auto max-w-5xl px-6 py-16 text-center">
+        <div className="mx-auto mb-6 h-24 w-24 overflow-hidden rounded-full ring-2 ring-gray-200">
+          {/* Положи своё фото в public/me.jpg */}
+          <Image src="/me.jpg" alt="Me" width={96} height={96} className="object-cover" />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <h1 className="text-4xl font-extrabold tracking-tight">MakhovikTech</h1>
+        <p className="mx-auto mt-3 max-w-2xl text-lg text-gray-600">
+          Разгоняем идеи в цифровые продукты 🚀
+        </p>
+
+        <div className="mt-6 flex justify-center gap-4">
+          <a href="#projects" className="rounded-xl border px-5 py-2 hover:bg-gray-50">Наши работы</a>
+          <a href="#contact" className="rounded-xl bg-black px-5 py-2 text-white hover:opacity-90">Связаться</a>
+        </div>
+      </section>
+
+      {/* ПРОЕКТЫ — как на макете (3 карточки на десктопе) */}
+<section id="projects" className="mx-auto max-w-6xl px-4 pb-8">
+  <div className="mb-4 flex items-center justify-between">
+    <h2 className="text-3xl font-bold">Наши работы</h2>
+    <div className="flex gap-2">
+      <button onClick={prev} className="rounded-xl border px-3 py-1.5 hover:bg-gray-50">←</button>
+      <button onClick={next} className="rounded-xl border px-3 py-1.5 hover:bg-gray-50">→</button>
     </div>
+  </div>
+
+  <div
+    ref={railRef}
+    onScroll={onScroll}
+    onPointerDown={onPointerDown}
+    onPointerMove={onPointerMove}
+    onPointerUp={onPointerUp}
+    onPointerCancel={onPointerUp}
+    className="flex gap-8 overflow-x-auto scroll-smooth pb-2 cursor-grab select-none"
+    style={{ scrollSnapType: "x mandatory" }}
+  >
+    {projects.map((p, i) => (
+      <a
+        key={p.url}
+        href={p.url}
+        target="_blank"
+        rel="noreferrer"
+        onClick={handleAnchorClick}
+onDragStart={(e) => e.preventDefault()}
+
+        data-card
+        className="
+          relative shrink-0 snap-start group overflow-hidden ring-1 ring-black/10 rounded-3xl
+          w-[88vw] h-[50vw]            /* мобайл, почти фуллвью */
+          sm:w-[70vw] sm:h-[39vw]      /* планшет */
+          lg:w-[560px] lg:h-[315px]    /* десктоп ~16:9 и влезает 3 штуки */
+        "
+      >
+        {/* Картинка 16:9, cover */}
+        <Image
+          src={p.image}
+          alt={p.name}
+          fill
+          sizes="(max-width: 640px) 88vw, (max-width: 1024px) 70vw, 560px"
+          className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
+          priority={i===0}
+        />
+        {/* Градиент снизу как на примере */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+        {/* Текст внизу слева */}
+        <div className="absolute inset-x-6 bottom-6 text-white">
+          <p className="text-base opacity-90 leading-snug">{p.desc}</p>
+          <h3 className="mt-1 text-3xl font-extrabold leading-tight">{p.name}</h3>
+        </div>
+      </a>
+    ))}
+  </div>
+
+  {/* Точки-индикаторы */}
+  <div className="mt-4 flex justify-center gap-1.5">
+    {projects.map((_, i) => (
+      <button
+        key={i}
+        onClick={() => scrollToIndex(i)}
+        aria-label={`Слайд ${i+1}`}
+        className={`h-1.5 w-1.5 rounded-full ${i===active ? "bg-black" : "bg-gray-300"}`}
+      />
+    ))}
+  </div>
+</section>
+
+
+      {/* КОНТАКТЫ */}
+      <section id="contact" className="mx-auto max-w-3xl px-6 py-14">
+        <h2 className="mb-4 text-2xl font-bold">Связаться</h2>
+        <form className="grid gap-3 rounded-2xl border p-4">
+          <input name="name" placeholder="Ваше имя" className="rounded-lg border px-3 py-2" />
+          <input name="email" type="email" placeholder="Email" className="rounded-lg border px-3 py-2" />
+          <textarea name="message" placeholder="Сообщение" rows={5} className="rounded-lg border px-3 py-2" />
+          <button className="rounded-xl bg-black px-5 py-2 text-white hover:opacity-90">Отправить</button>
+        </form>
+
+        <div className="mt-4 text-sm text-gray-600">
+    Или напрямую:{" "}
+    <a href="mailto:youremail@example.com" className="underline">youremail@example.com</a> ·{" "}
+    <a href="https://t.me/yourusername" target="_blank" rel="noreferrer" className="underline">@yourusername</a> ·{" "}
+    <a href="https://github.com/yourusername" target="_blank" rel="noreferrer" className="underline">GitHub</a>
+  </div>
+      </section>
+
+      <footer className="border-t py-6 text-center text-sm text-gray-500">
+        © {new Date().getFullYear()} MakhovikTech
+      </footer>
+    </main>
   );
 }
