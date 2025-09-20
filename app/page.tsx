@@ -184,9 +184,9 @@ export default function Home() {
 
         <div className="mt-4 text-sm text-gray-600">
           Или напрямую:{" "}
-          <a href="mailto:youremail@example.com" className="underline">youremail@example.com</a> ·{" "}
-          <a href="https://t.me/yourusername" target="_blank" rel="noreferrer" className="underline">@yourusername</a> ·{" "}
-          <a href="https://github.com/yourusername" target="_blank" rel="noreferrer" className="underline">GitHub</a>
+          <a href="mailto:makhovik.test@gmail.com" className="underline">makhovik.test@gmail.com</a> ·{" "}
+          <a href="https://t.me/makhovikk" target="_blank" rel="noreferrer" className="underline">@makhovikk</a> ·{" "}
+          <a href="https://github.com/makhoney" target="_blank" rel="noreferrer" className="underline">GitHub</a>
         </div>
       </section>
 
