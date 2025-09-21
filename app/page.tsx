@@ -1,6 +1,13 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  FormEvent,
+  ChangeEvent,
+} from "react";
 import { projects } from "../lib/projects";
 
 export default function Home() {
@@ -14,6 +21,13 @@ export default function Home() {
 
   // drag-to-scroll состояние
   const drag = useRef({ active: false, startX: 0, moved: false });
+
+  // состояние формы контактов
+  const [formData, setFormData] = useState({ name: "", email: "", message: "" });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formStatus, setFormStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [formMessage, setFormMessage] = useState("");
+  const formEndpoint = "https://formspree.io/f/xanpwypk";
 
   function onPointerDown(e: React.PointerEvent) {
     drag.current = { active: true, startX: e.clientX, moved: false };
@@ -33,6 +47,91 @@ export default function Home() {
   function onPointerUp() {
     drag.current.active = false;
     (railRef.current as HTMLElement | null)?.classList.remove("cursor-grabbing");
+  }
+
+  function handleFormChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+    setFormStatus((prev) => (prev === "success" || prev === "error" ? "idle" : prev));
+    setFormMessage("");
+  }
+
+  function validateForm() {
+    const errors: Record<string, string> = {};
+    const name = formData.name.trim();
+    const email = formData.email.trim();
+    const message = formData.message.trim();
+
+    if (!name) {
+      errors.name = "Введите имя";
+    } else if (name.length < 2) {
+      errors.name = "Имя должно содержать минимум 2 символа";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      errors.email = "Введите email";
+    } else if (!emailRegex.test(email)) {
+      errors.email = "Введите корректный email";
+    }
+
+    if (!message) {
+      errors.message = "Введите сообщение";
+    } else if (message.length < 10) {
+      errors.message = "Сообщение должно быть не короче 10 символов";
+    } else if (message.length > 1000) {
+      errors.message = "Сообщение должно быть короче 1000 символов";
+    }
+
+    return errors;
+  }
+
+  async function handleFormSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setFormStatus("error");
+      setFormMessage("Проверьте правильность заполнения формы.");
+      return;
+    }
+
+    setFormErrors({});
+    setFormStatus("loading");
+    setFormMessage("");
+
+    try {
+      const response = await fetch(formEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          message: formData.message.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit");
+      }
+
+      setFormStatus("success");
+      setFormMessage("Сообщение успешно отправлено!");
+      setFormData({ name: "", email: "", message: "" });
+    } catch (error) {
+      console.error("Form submission failed", error);
+      setFormStatus("error");
+      setFormMessage("Не удалось отправить сообщение. Попробуйте позже.");
+    }
   }
 
   function handleAnchorClick(e: React.MouseEvent) {
@@ -229,28 +328,82 @@ export default function Home() {
       >
         <div className="pointer-events-none absolute inset-0 -z-10 rounded-[36px] bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_65%)]" />
         <h2 className="mb-6 text-center text-4xl font-extrabold tracking-tight text-white">Связаться</h2>
-        <form className="grid gap-4">
+        <form className="grid gap-4" onSubmit={handleFormSubmit} noValidate>
           <input
             name="name"
+            id="contact-name"
             placeholder="Ваше имя"
+            value={formData.name}
+            onChange={handleFormChange}
+            required
+            minLength={2}
+            maxLength={60}
+            aria-invalid={Boolean(formErrors.name)}
+            aria-describedby={formErrors.name ? "contact-name-error" : undefined}
             className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-base text-slate-100 placeholder:text-slate-400 transition focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           />
+          {formErrors.name && (
+            <p id="contact-name-error" role="alert" className="text-sm text-rose-300">
+              {formErrors.name}
+            </p>
+          )}
           <input
             name="email"
             type="email"
+            id="contact-email"
             placeholder="Email"
+            value={formData.email}
+            onChange={handleFormChange}
+            required
+            maxLength={254}
+            aria-invalid={Boolean(formErrors.email)}
+            aria-describedby={formErrors.email ? "contact-email-error" : undefined}
             className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-base text-slate-100 placeholder:text-slate-400 transition focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           />
+          {formErrors.email && (
+            <p id="contact-email-error" role="alert" className="text-sm text-rose-300">
+              {formErrors.email}
+            </p>
+          )}
           <textarea
             name="message"
+            id="contact-message"
             placeholder="Сообщение"
             rows={5}
+            value={formData.message}
+            onChange={handleFormChange}
+            required
+            minLength={10}
+            maxLength={1000}
+            aria-invalid={Boolean(formErrors.message)}
+            aria-describedby={formErrors.message ? "contact-message-error" : undefined}
             className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-base text-slate-100 placeholder:text-slate-400 transition focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           />
-          <button className="rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500 px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white shadow-[0_20px_60px_-30px_rgba(99,102,241,0.85)] transition hover:shadow-[0_30px_90px_-35px_rgba(56,189,248,0.9)]">
-            Отправить
+          {formErrors.message && (
+            <p id="contact-message-error" role="alert" className="text-sm text-rose-300">
+              {formErrors.message}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={formStatus === "loading"}
+            className="rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500 px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white shadow-[0_20px_60px_-30px_rgba(99,102,241,0.85)] transition hover:shadow-[0_30px_90px_-35px_rgba(56,189,248,0.9)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {formStatus === "loading" ? "Отправка..." : "Отправить"}
           </button>
         </form>
+
+        {formMessage && (
+          <p
+            role="status"
+            aria-live="polite"
+            className={`mt-4 text-center text-sm ${
+              formStatus === "success" ? "text-emerald-300" : "text-rose-300"
+            }`}
+          >
+            {formMessage}
+          </p>
+        )}
 
         <div className="mt-6 text-center text-sm text-slate-300">
           Или напрямую:{" "}
